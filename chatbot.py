@@ -3,6 +3,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from pyunpack import Archive
+from time import sleep
 import shutil, os
 
 class Chatbot(object):
@@ -21,6 +22,11 @@ class Chatbot(object):
         self.x_arg = "//div[contains(@class, " + self.target + ")]"
         self.wait = WebDriverWait(self.driver, 600)
         self.wait.until(EC.presence_of_element_located((By.XPATH, self.x_arg)))
+
+    def waitUpload(self):
+        self.x_arg = "span[data-icon='send-light"
+        self.wait = WebDriverWait(self.driver, 600)
+        self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, self.x_arg)))
 
     def typeAndSendMessage(self, message):
         self.message_target = self.driver.find_elements_by_xpath('//*[@id="main"]/footer/div[1]/div[2]/div/div[2]')[0]
@@ -42,6 +48,10 @@ class Chatbot(object):
                 else:
                     move = True
 
+    def removeFileandDir(self, namafile, path):
+        os.remove(namafile)
+        shutil.rmtree(path)
+
     def makeDirectory(self):
         mkdir = True
         create = '1'
@@ -54,25 +64,20 @@ class Chatbot(object):
                 mkdir = True
         return create
 
-    def extractFiles(self, namafile):
+    def extractFiles(self, namafile, path, create):
         try:
-            create=self.makeDirectory()
             Archive(namafile).extractall('.\\' + str(create))
             result = []
-            path=r'.\{folder}'.format(folder=create)
             for root, dirs, files in os.walk(path):
                 for i in files:
                     if '.pdf' in i:
                         result.append(os.path.join(root, i))
             for i in result:
                 self.typeAndSendMessage(str(i))
-            os.remove(namafile)
-            shutil.rmtree(path)
         except:
+            self.removeFileandDir(namafile, path)
             result=''
             self.typeAndSendMessage('file must be .zip or .rar')
-            os.remove(namafile)
-            os.rmdir(create)
         return result
 
     def cekAndSendMessage(self):
@@ -94,8 +99,20 @@ class Chatbot(object):
                         self.driver.find_elements_by_class_name('_17viz')[-1].click()
                         self.typeAndSendMessage('sudah di download yaaa...')
                         self.moveFiles(namafile)
-                        self.extractFiles(namafile)
-                    except:
+                        create = self.makeDirectory()
+                        path = r'.\{folder}'.format(folder=create)
+                        result=self.extractFiles(namafile, path, create)
+                        self.driver.find_element_by_xpath('/html/body/div[1]/div/div/div[4]/div/header/div[3]/div/div[2]/div').click()
+                        sleep(1)
+                        developmentpath='C:\\Users\\trian\\gehujeleTOT'
+                        newpath=os.path.join(developmentpath, result[0])
+                        self.driver.find_element_by_xpath('/html/body/div[1]/div/div/div[4]/div/header/div[3]/div/div[2]/span/div/div/ul/li[3]/button/input').send_keys(newpath)
+                        sleep(1)
+                        self.driver.find_element_by_css_selector("span[data-icon='send-light").click()
+                        sleep(1)
+                        self.removeFileandDir(namafile, path)
+                    except Exception as e:
+                        self.typeAndSendMessage(str(e))
                         self.typeAndSendMessage('ga ada filenya....')
             except Exception as e:
                 print(e)
